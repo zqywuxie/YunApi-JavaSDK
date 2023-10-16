@@ -6,7 +6,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.wuxie.yunapi.yunapiclientsdk.model.enums.RequestMethodEnum;
 import com.wuxie.yunapi.yunapiclientsdk.model.response.ResultResponse;
-import yunapiCommon.common.BaseResponse;
 
 import javax.xml.transform.Result;
 import java.util.HashMap;

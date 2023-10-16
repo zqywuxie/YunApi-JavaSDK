@@ -8,6 +8,9 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @author wuxie
+ */
 @Data
 @NoArgsConstructor
 public class ResultResponse implements Serializable {

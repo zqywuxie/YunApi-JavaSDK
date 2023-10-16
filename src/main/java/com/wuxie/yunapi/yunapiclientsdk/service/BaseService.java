@@ -5,18 +5,19 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONUtil;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import com.wuxie.yunapi.yunapiclientsdk.client.APIClient;
+import com.wuxie.yunapi.yunapiclientsdk.exception.ErrorCode;
+import com.wuxie.yunapi.yunapiclientsdk.exception.ApiException;
 import com.wuxie.yunapi.yunapiclientsdk.model.request.BaseRequest;
 import com.wuxie.yunapi.yunapiclientsdk.model.response.ResultResponse;
 import com.wuxie.yunapi.yunapiclientsdk.utils.SignUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import yunapiCommon.common.ErrorCode;
-import yunapiCommon.exception.BusinessException;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -34,8 +35,10 @@ import java.util.Map;
 @Slf4j
 public abstract class BaseService implements ApiService {
 
+    // 自动注入apiclient
     private APIClient apiClient;
-    private static final String GATEWAY_HOST = "http://localhost:9091/api/";
+
+    private String gatewayHost = "http://localhost:9091/api/";
 
 
     /**
@@ -44,8 +47,8 @@ public abstract class BaseService implements ApiService {
      * @param apiClient 客户端
      */
     public void checkConfig(APIClient apiClient) {
-        if (apiClient == null && this.getApiClient() == null || StringUtils.isAnyBlank(apiClient.getAccessKey(), apiClient.getSerectKey())) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "请先配置AccessKey/SecretKey");
+        if (apiClient == null && this.getApiClient() == null || StringUtils.isAnyBlank(apiClient.getAccessKey(), apiClient.getSecretKey())) {
+            throw new ApiException(ErrorCode.NO_AUTH_ERROR, "请先配置AccessKey/SecretKey");
         } else {
             this.setApiClient(apiClient);
         }
@@ -66,12 +69,12 @@ public abstract class BaseService implements ApiService {
         try {
             httpRequestByRequest = getHttpRequestByRequest(request);
         } catch (UnsupportedEncodingException e) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, e.getMessage());
+            throw new ApiException(ErrorCode.OPERATION_ERROR, e.getMessage());
         }
 
         try (HttpResponse response = httpRequestByRequest.execute()) {
             if (!response.isOk()) {
-                throw new BusinessException(ErrorCode.OPERATION_ERROR, "请求失败" + response.body());
+                throw new ApiException(ErrorCode.OPERATION_ERROR, "请求失败" + response.body());
             }
             return response;
         }
@@ -80,8 +83,8 @@ public abstract class BaseService implements ApiService {
 
     // 获得请求结果数据
     private <T, O extends ResultResponse> O getRequestResultData(BaseRequest<T, O> request) {
-        if (apiClient == null || StringUtils.isAnyBlank(apiClient.getAccessKey(), apiClient.getSerectKey())) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "请先配置AccessKey/SecretKey");
+        if (apiClient == null || StringUtils.isAnyBlank(apiClient.getAccessKey(), apiClient.getSecretKey())) {
+            throw new ApiException(ErrorCode.NO_AUTH_ERROR, "请先配置AccessKey/SecretKey");
         }
         O res;
         try {
@@ -94,7 +97,7 @@ public abstract class BaseService implements ApiService {
         String body = response.body();
         Map<String, Object> dataMap = new HashMap<>();
         if (response.getStatus() != 200) {
-            BusinessException errorBean = JSONUtil.toBean(body, BusinessException.class);
+            ApiException errorBean = JSONUtil.toBean(body, ApiException.class);
             dataMap.put("errorCode", errorBean.getCode());
             dataMap.put("errorMsg", errorBean.getMessage());
         } else {
@@ -122,19 +125,19 @@ public abstract class BaseService implements ApiService {
 
     private <T, O extends ResultResponse> HttpRequest getHttpRequestByRequest(BaseRequest<T, O> request) throws UnsupportedEncodingException {
         if (ObjectUtil.isEmpty(request)) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "请求参数错误");
+            throw new ApiException(ErrorCode.OPERATION_ERROR, "请求参数错误");
         }
         String method = request.getMethod();
         String[] split = request.getPath().trim().split("/");
         String path = split[split.length - 1];
         if (StringUtils.isBlank(method)) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "请指定正确的请求方法");
+            throw new ApiException(ErrorCode.OPERATION_ERROR, "请指定正确的请求方法");
         }
         if (StringUtils.isBlank(path)) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "请指定正确的请求路径");
+            throw new ApiException(ErrorCode.OPERATION_ERROR, "请指定正确的请求路径");
         }
-        if (path.startsWith(GATEWAY_HOST)) {
-            path = path.substring(GATEWAY_HOST.length());
+        if (path.startsWith(gatewayHost)) {
+            path = path.substring(gatewayHost.length());
         }
         log.info("请求路径:{},请求方法:{},请求参数:{}", path, method, request.getRequestParams());
         HttpRequest httpRequest = null;
@@ -143,10 +146,10 @@ public abstract class BaseService implements ApiService {
                 httpRequest = HttpRequest.get(splicingGetRequest(request, path));
                 break;
             case "POST":
-                httpRequest = HttpRequest.post(GATEWAY_HOST + path);
+                httpRequest = HttpRequest.post(gatewayHost + path);
                 break;
             default:
-                throw new BusinessException(ErrorCode.OPERATION_ERROR, "暂不支持该请求");
+                throw new ApiException(ErrorCode.OPERATION_ERROR, "暂不支持该请求");
         }
         return httpRequest.addHeaders(getHeaders(JSONUtil.toJsonStr(request), apiClient)).body(JSONUtil.toJsonStr(request.getRequestParams()));
 
@@ -161,7 +164,7 @@ public abstract class BaseService implements ApiService {
      */
     private <T, O extends ResultResponse> String splicingGetRequest(BaseRequest<T, O> request, String path) {
         //访问网关
-        StringBuilder urlBuilder = new StringBuilder(GATEWAY_HOST);
+        StringBuilder urlBuilder = new StringBuilder(gatewayHost);
         //如果GATEWAY_HOST以/结尾并且path以/开头，就先行删除/
         if (urlBuilder.toString().endsWith("/") && path.startsWith("/")) {
             urlBuilder.deleteCharAt(urlBuilder.toString().length() - 1);
@@ -196,7 +199,7 @@ public abstract class BaseService implements ApiService {
         body = URLEncoder.encode(body, StandardCharsets.UTF_8.name());
         // 防止中文乱码
         header.put("body ", body);
-        header.put("sign", SignUtil.sign(body, apiClient.getSerectKey()));
+        header.put("sign", SignUtil.sign(body, apiClient.getSecretKey()));
 
         header.put("nonce", RandomUtil.randomNumbers(5));
 
@@ -210,7 +213,7 @@ public abstract class BaseService implements ApiService {
         try {
             return getRequestResultData(request);
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, e.getMessage());
+            throw new ApiException(ErrorCode.OPERATION_ERROR, e.getMessage());
         }
     }
 

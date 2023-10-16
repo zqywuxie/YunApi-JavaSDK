@@ -2,7 +2,6 @@ package com.wuxie.yunapi.yunapiclientsdk.model.request;
 
 import com.wuxie.yunapi.yunapiclientsdk.model.response.ResultResponse;
 import lombok.Data;
-import yunapiCommon.common.BaseResponse;
 
 /**
  * @author wuxie

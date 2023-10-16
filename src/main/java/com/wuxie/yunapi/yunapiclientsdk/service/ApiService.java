@@ -4,15 +4,9 @@ import cn.hutool.http.HttpResource;
 import com.wuxie.yunapi.yunapiclientsdk.client.APIClient;
 import com.wuxie.yunapi.yunapiclientsdk.model.request.BaseRequest;
 import com.wuxie.yunapi.yunapiclientsdk.model.request.PhoneRequest;
+import com.wuxie.yunapi.yunapiclientsdk.model.response.LoveTalkResponse;
 import com.wuxie.yunapi.yunapiclientsdk.model.response.PhoneResponse;
 import com.wuxie.yunapi.yunapiclientsdk.model.response.ResultResponse;
-import cn.hutool.http.HttpResponse;
-
-import org.springframework.stereotype.Service;
-import yunapiCommon.common.BaseResponse;
-import yunapiCommon.entity.User;
-
-import java.io.UnsupportedEncodingException;
 
 /**
  * @author wuxie
@@ -29,11 +23,16 @@ public interface ApiService {
      */
     PhoneResponse homeOfPhone(APIClient apiClient, PhoneRequest request);
 
-    String getNameByGet(String name);
 
-    String getNameByPost(String name);
+    LoveTalkResponse loveTalk(APIClient apiClient);
 
-    String getNameByPostWithJson(User user) throws UnsupportedEncodingException;
+    LoveTalkResponse loveTalk();
+
+//    String getNameByGet(String name);
+//
+//    String getNameByPost(String name);
+//
+//    String getNameByPostWithJson(User user) throws UnsupportedEncodingException;
 
 
     /**
@@ -47,6 +46,7 @@ public interface ApiService {
 
     /**
      * 提供客户端的请求
+     *
      * @param request
      * @param apiClient
      * @return {@link O}
